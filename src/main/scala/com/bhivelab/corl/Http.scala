@@ -1,7 +1,8 @@
 package com.bhivelab.corl
 
-import java.io.{IOException, InputStream}
-import java.net.{HttpURLConnection, URL}
+import java.util.concurrent.TimeUnit
+
+import com.ning.http.client.{AsyncHttpClient, Request, RequestBuilder, Response}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -11,33 +12,27 @@ import scala.concurrent.{ExecutionContext, Future}
 object Http {
   def apply(req: HttpRequest)(implicit executionContext: ExecutionContext): Future[HttpResponse] = {
     Future {
-      val conn = new URL(req.url).openConnection().asInstanceOf[HttpURLConnection]
-      conn.setDoOutput(true)
-      conn.setUseCaches(false)
-
-      req.headers.foreach {
-        case (key,value) => conn.setRequestProperty(key,value)
-      }
-
-      conn.setRequestMethod(req.verb.verb)
-
-      req.verb match {
-        case post =>
-          conn.setRequestProperty("Content-Length", req.data.length.toString)
-          conn.getOutputStream.write(req.data)
-      }
-
-      readFully(conn)
+      val client = new AsyncHttpClient()
+      val response = client.executeRequest(requestTransform(req)).get(60, TimeUnit.SECONDS)
+      client.close()
+      responseTransform(response)
     }
   }
 
-  private def readFully(conn: HttpURLConnection): HttpResponse = {
-    def consume(in: InputStream): Array[Byte] = Stream.continually(in.read()).takeWhile(_ != -1).map(_.toByte).toArray
-    try {
-      HttpResponse(conn.getResponseCode, consume(conn.getInputStream))
-    } catch {
-      case cause: IOException if conn.getErrorStream != null =>
-        HttpResponse(conn.getResponseCode, consume(conn.getInputStream))
+  private def requestTransform(req: HttpRequest): Request = {
+    val rb = new RequestBuilder(req.verb.verb).setUrl(req.url)
+    req.headers.foreach {
+      case (key,value) => rb.setHeader(key,value)
     }
+
+    req.data match {
+      case Some(body) => rb.setBody(body)
+      case None =>
+    }
+
+    rb.build()
   }
+
+  private def responseTransform(resp: Response): HttpResponse =
+    HttpResponse(resp.getStatusCode, resp.getResponseBodyAsBytes)
 }

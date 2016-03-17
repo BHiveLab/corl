@@ -11,5 +11,5 @@ object HttpVerbs {
 
 case class HttpVerb(verb: String)
 
-case class HttpRequest(verb: HttpVerb, url: String, headers: Map[String,String], data: Array[Byte])
+case class HttpRequest(verb: HttpVerb, url: String, headers: Map[String,String], data: Option[Array[Byte]])
 

@@ -28,7 +28,7 @@ object OAuth {
       "Charset" ->  "utf-8"
     )
 
-    val httpRequest = HttpRequest(post, endpoint, headers, data)
+    val httpRequest = HttpRequest(post, endpoint, headers, Some(data))
 
     val transformer = parse _ andThen throwOnApiError andThen toTokenAccessResponse
 
@@ -41,7 +41,7 @@ object OAuth {
       "Authorization" ->  s"${creds.tokenType} ${creds.accessToken}"
     )
 
-    val httpRequest = HttpRequest(HttpVerbs.get, endpoint, headers, Array.empty)
+    val httpRequest = HttpRequest(HttpVerbs.get, endpoint, headers, None)
 
     Http(httpRequest).map(_.data)
   }
